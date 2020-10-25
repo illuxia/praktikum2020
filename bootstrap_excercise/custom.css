@@ -1,0 +1,15 @@
+header {
+    margin-bottom: 2rem;
+}
+main {
+    background-color: #f5f6f7;
+}
+main .container {
+    padding-top:  4rem;
+}
+button {
+    background-color: #f5cb42;
+    border: 0;
+    padding: 1rem 2rem;
+    font-weight: bold;
+}
