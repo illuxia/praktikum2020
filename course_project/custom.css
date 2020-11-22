@@ -1,0 +1,29 @@
+main {
+    margin-top: 5rem;
+}
+
+.inline-div {
+    display: inline-block;
+}
+
+#teams {
+    display: none;
+}
+
+#toggle-layout {
+    display: none;
+}
+
+#fixtures_list {
+    display: inline-block;
+}
+
+.match_row {
+    border: 1px solid black;
+    margin: 0;
+    border-radius: 1rem;
+}
+
+.no-display {
+    display: none;
+}

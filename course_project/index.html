@@ -1,0 +1,248 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
+    <link rel="stylesheet" href="custom.css">
+    <title>Soccer API</title>
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <div class="row"> 
+            <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+            
+                <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+                    <ul class="navbar-nav mr-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Fixtures <span class="sr-only">(current)</span></a>
+                    </li>
+                </div>
+            </nav>
+        </div>
+      </div>
+    </header>
+
+    <main>
+        <div class="container mb-5">
+            <div class="row">
+                <div class="col-md">
+                    <div class="col-md-3 inline-div">
+                        <label for="select-league">Leagues</label>
+                        <select class="form-control" id="select-league">
+                            <option id="default-choose-league">Choose League</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 inline-div" id="teams">
+                        <label for="select-team">Teams</label>
+                        <select class="form-control" id="select-team">
+                        </select>
+                    </div>
+                    <div class="col-md-3 inline-div">
+                        <button class="btn btn-primary mb-2" id="toggle-layout">Toggle Layout</button>
+                    </div>
+                </div>
+            </div>
+        </div>  
+        
+        <div class="container match_container"></div>
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.js" integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc=" crossorigin="anonymous"></script>
+    
+    <script>
+        $(document).ready(function(){
+            
+            var apiKey = 'b3a6d1f0-1616-11eb-905c-79b6a3bf93ef';
+
+            var leagueList = {};
+            var teamsList = {};
+            var leagueStandings = {};
+            var matches = {};
+            var selected_season_id;
+
+            // get leagues
+            $.ajax({
+                url: 'https://app.sportdataapi.com/api/v1/soccer/leagues?apikey=' + apiKey + '&subscribed=true',
+                type: "GET",
+                dataType: "json"
+            }).done(function(response) {
+                leagueList = response.data;
+
+                // load fixtures select
+                for (const key in leagueList) {
+                    $("#select-league").append('<option value=' + leagueList[key].league_id + ' id=' + leagueList[key].country_id + '>' + leagueList[key].name + '</option>');
+                }
+
+            });
+
+            // load teams for selected league
+            $("#select-league").change(function() {
+
+                $("#default-choose-league").attr('disabled', 'true');
+                $("#teams").css("display","inline-block");
+                $("#toggle-layout").css("display","inline-block");
+
+                var selected_country_id = $("#select-league").find(":selected").attr("id");
+                var selected_league_id = $("#select-league").find(":selected").val();
+
+                // get teams
+                $.ajax({
+                    url: 'https://app.sportdataapi.com/api/v1/soccer/teams?apikey=' + apiKey + '&country_id=' + selected_country_id,
+                    type: "GET",
+                    dataType: "json"
+                }).done(function(response) {
+                    teamsList = response.data;
+                });
+                //get seasons
+                $.ajax({
+                    url: 'https://app.sportdataapi.com/api/v1/soccer/seasons?apikey=' + apiKey + '&league_id=' + selected_league_id,
+                    type: "GET",
+                    dataType: "json"
+                }).done(function(response) {
+                    for (var key in response.data) {
+                        if(response.data[key].is_current == 1) {
+                            selected_season_id = response.data[key].season_id;
+                            // get standings
+                            $.ajax({
+                                url: "https://app.sportdataapi.com/api/v1/soccer/standings?apikey=" + apiKey + "&season_id=" + response.data[key].season_id,
+                                type: 'GET',
+                                dataType: 'json'
+                            }).done(function(response) {
+                                leagueStandings = response.data;
+                                var teamIds = [];
+                                for (var key in response.data.standings) {
+                                    teamIds.push(response.data.standings[key].team_id);
+                                }
+
+                                $("#select-team").empty();
+                                $("#select-team").append('<option value="0" id="default-choose-team">Choose Team</option>');
+                                for (var key in teamsList) {
+                                    if (teamIds.includes(teamsList[key].team_id)) {
+                                        $("#select-team").append('<option class="team_name" value=' + teamsList[key].team_id + '>' + teamsList[key].name + '</option>');
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    // get matches
+                    $.ajax({
+                    url: 'https://app.sportdataapi.com/api/v1/soccer/matches?apikey=' + apiKey + '&season_id=' + selected_season_id,
+                    type: 'GET',
+                    dataType: 'json'
+                    }).done(function(response) {
+                        matches = response.data;
+                        $(".match_container").empty();
+                        var matchesArray = new Array(...matches).sort((a, b) => parseFloat(new Date(Date.parse(b.match_start.replace(' ', 'T').concat('Z'))).toUTCString() - 
+                                                                                parseFloat(new Date(Date.parse(a.match_start.replace(' ', 'T').concat('Z'))).toUTCString())));
+                        for (var key in matchesArray) {
+                            if (matches[key].status_code == 0) {
+                                loadFixtures(matches[key]);
+                            }
+                        }
+                        if (!$('.match_container').hasClass('d-flex')) {
+                            showMatchesHeader($(".match_container"));
+                        }
+                    });
+                });
+
+            });
+
+            // load fixtures for selected team
+            $("#select-team").change(function() {
+                $("#default-choose-team").text('All teams');
+                var selected_team_id = $(this).find(":selected").val();
+                $(".match_container").empty();
+                var matchesArray = new Array(...matches).sort((a, b) => parseFloat(new Date(Date.parse(b.match_start.replace(' ', 'T').concat('Z'))).toUTCString() - 
+                                                                        parseFloat(new Date(Date.parse(a.match_start.replace(' ', 'T').concat('Z'))).toUTCString())));
+                for (var key in matchesArray) {
+                    if (matches[key].status_code == 0 && (matches[key].home_team.team_id == selected_team_id || matches[key].away_team.team_id == selected_team_id)) {
+                        loadFixtures(matches[key]);
+                    }
+                    if (matches[key].status_code == 0 && selected_team_id == 0) {
+                        loadFixtures(matches[key]);
+                    }
+                }
+                if (!$('.match_container').hasClass('d-flex')) {
+                    showMatchesHeader($(".match_container"));
+                }
+                
+            });
+
+            // toggle layout button
+            $("#toggle-layout").click(function() {
+
+                $(".match_container").toggleClass("d-flex flex-wrap");
+                $(".match_header").toggleClass("no-display");
+
+                if ($(".match_container").hasClass("d-flex")) {
+                    $(".match_row").addClass("col-md-4 d-flex flex-column")
+                    $(".match_row").find('div').addClass("col-md-12 d-flex justify-content-center");
+                    $(".match_header").remove();
+                } else {
+                    $(".match_row").removeClass("col-md-4 d-flex flex-column")
+                    $(".match_row").find('div').removeClass("col-md-12 d-flex justify-content-center");
+                    $(".match_row").find('div').addClass("col-md-4");
+                    showMatchesHeader($(".match_container"));
+                    
+                }
+                
+            });
+
+            // load fixture
+            function loadFixtures(match) {                
+                if ($('.match_container').hasClass('d-flex')) {
+                    $('.match_header').remove();
+                    $(".match_container").append('<div class="row match_row border border-secondary col-md-4 d-flex flex-column">'+
+                                                    '<div class="col-md-12 d-flex justify-content-center">' +
+                                                        new Date(Date.parse(match.match_start.replace(' ', 'T').concat('Z'))).toUTCString() +
+                                                    '</div>' +
+                                                    '<div class="col-md-12 d-flex justify-content-center">' +
+                                                        '<input type="hidden" value=' + match.home_team.team_id +'>' +
+                                                        '<img style="width: 20px; height: 20px;" src=' + match.home_team.logo +'>'+
+                                                        match.home_team.name +
+                                                    '</div>' +
+                                                    '<div class="col-md-12 d-flex justify-content-center">' +
+                                                        '<input type="hidden" value=' + match.away_team.team_id +'>' +
+                                                        '<img style="width: 20px; height: 20px;" src=' + match.away_team.logo +'>'+
+                                                        match.away_team.name +
+                                                    '</div>' +
+                                                '</div>');
+                } else {
+                    $(".match_container").append('<div class="row match_row border border-secondary">'+
+                                                    '<div class="col-md-4">' +
+                                                        new Date(Date.parse(match.match_start.replace(' ', 'T').concat('Z'))).toUTCString() +
+                                                    '</div>' +
+                                                    '<div class="col-md-4">' +
+                                                        '<input type="hidden" value=' + match.home_team.team_id +'>' +
+                                                        '<img style="width: 20px; height: 20px;" src=' + match.home_team.logo +'>'+
+                                                        match.home_team.name +
+                                                    '</div>' +
+                                                    '<div class="col-md-4">' +
+                                                        '<input type="hidden" value=' + match.away_team.team_id +'>' +
+                                                        '<img style="width: 20px; height: 20px;" src=' + match.away_team.logo +'>'+
+                                                        match.away_team.name +
+                                                    '</div>' +
+                                                '</div>');
+                }
+            }
+
+            function showMatchesHeader(container) {
+                if($(".match_container").children().length >= 1) {
+                    container.prepend('<div class="row col-md-12 match_header mb-3">' +
+                                        '<div class="col">Time</div>' +
+                                        '<div class="col"> Home Team</div>' +
+                                        '<div class="col">Away Team</div>' +
+                                      '</div>');
+                }
+                
+            }
+            
+        });
+    </script>
+  </body>
+</html>
